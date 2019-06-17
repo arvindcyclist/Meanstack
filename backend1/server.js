@@ -3,11 +3,14 @@ const cors = require('cors')
 const bodyParser = require('body-parser')
 const mongoose = require('mongoose')
 const Issue = require('./Issue')
+const Userdata = require('./Issue')
 const app = express()
 const router = express.Router()
 const PORT = process.env.port || 4000
 app.use(cors())
 app.use(bodyParser.json())
+const jwt = require('jsonwebtoken');
+const helper =require('./helper');
 
 
 //uri from mongodb atlas cluster
@@ -36,24 +39,52 @@ connection.once('open', ()=>{
     console.log("MongoDb connection established successfully")
 })
 
-//end point
+
+
+
+//end point only admin user can access 
 router.route('/issues').get((req, res) => {
-    Issue.find((err, issues) => {
-        if (err)
-            console.log(err)
-        else 
-            res.json(issues)
-    })
+    let user = helper(req.headers);
+    if(user.roles == 'admin'){
+        Issue.find().then(docs=>{
+            res.status(200).send({
+                success:true,
+                message:docs
+            })  
+        }).catch(err=>{
+            res.status(500).send({
+                success:false,
+                message:err
+            })  
+        })
+    } else {
+        res.status(200).send({
+            success:true,
+            message:"Access Denied"
+        })
+    }
 })
 
 
 //get issues by id
 router.route('/issues/:id').get((req, res) => {
-    Issue.findById(req.params.id, (err, issue) => {
+    Issue.find({_id:req.params.id}, (err, issue) => {
         if (err)
             console.log(err)
         else
             res.json(issue)
+    })
+})
+
+//get issues by status
+router.route('/issues/:status').get((req, res) => {
+    
+    Issue.find({'status' : req.params.status}, (err, issue) => {
+        if (err)
+            console.log(err)
+        else
+            res.json(issue)
+            console.log(issue)
     })
 })
 
@@ -72,6 +103,15 @@ router.route('/issues/add').post((req, res) => {
 
 })
 
+router.route('/issues/add/user').post((req, res) => {
+    let user = new Userdata(req.body)
+    user.save()
+        .then(user =>{
+            res.status(200).json({'user' : 'Added succesfully'})
+        }).catch(err => {
+            res.status(400).send('Failed to create user')
+        })
+})
 //update issue
 router.route('/issues/update/:id').post((req, res, next) =>{
     Issue.findById(req.params.id, (err, issue) =>{
@@ -104,6 +144,16 @@ router.route('/issues/delete/:id').get((req, res) =>{
             res.json('Removed Successfully')
     })
 })
+
+app.post('/login', (req,res,next)=>{
+    console.log(req.body);
+    Userdata.findOne({username:req.body.username,password:req.body.password}).then(doc=>{
+        console.log(doc);
+        let token = jwt.sign({doc},'rsa256');
+        res.status(200).send({ success: true, data: token })
+    })
+})
+
 app.use('/', router)
 
 app.set(PORT)

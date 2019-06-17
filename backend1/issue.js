@@ -7,11 +7,17 @@ let Issue = new Schema({
     responsible : { type : String },
     description : { type : String },
     severity : { type : String },
-    status : { type : String, default : 'Open' }
+    status : { type : String, default : 'open' }
+})
+
+let Userdata = new Schema({
+    username : {type : String},
+    roles : {type : String}
 })
 
 
 module.exports = mongoose.model('Issue', Issue)  
+module.exports = mongoose.model('Userdata', Userdata)
 
 //export default mongoose.model('Issue', Issue) this is not working 
 // mongodb atlas automatically creates collection in lower case with plurals of 1st argument in mongoose.model
